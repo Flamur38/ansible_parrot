@@ -1,0 +1,16 @@
+---
+
+- name: "Installing Parrot"
+  hosts: localhost
+  connection: local
+  become: true
+  
+  vars:
+    target_user: flamy
+    target_home: "/home/flamy"
+
+  roles:
+    - role: "roles/tmux"
+    - role: "roles/neovim"
+    # - role: "roles/installing_tools"
+    # - role: "roles/dotfiles"

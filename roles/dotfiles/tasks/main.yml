@@ -1,0 +1,18 @@
+---
+- name: "Copy dotfiles"
+  copy:
+    src: "{{ item.src }}"
+    dest: "/home/{{ ansible_user_id }}/{{ item.dest }}"
+    # owner: "{{ ansible_user_id }}"
+    # group: "{{ ansible_user_id }}"
+    # mode: preserve
+
+  loop:
+    - { src: ".bashrc", dest: ".bashrc" }
+    - { src: ".bash_aliases", dest: ".bash_aliases" }
+    - { src: ".bash_profile", dest: ".bash_profile" }
+    - { src: ".profile", dest: ".profile" }
+    - { src: ".xinitrc", dest: ".xinitrc" }
+    - { src: ".Xresources", dest: ".Xresources" }
+    - { src: ".zshrc", dest: ".zshrc" }
+    - { src: "nvim", dest: ".config/nvim" }

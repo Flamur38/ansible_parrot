@@ -1,0 +1,115 @@
+---
+# =========================
+# APT BASICS
+# =========================
+
+- name: Update apt repo/cache
+  ansible.builtin.apt:
+    update_cache: yes
+    force_apt_get: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: yes
+    force_apt_get: yes
+
+# =========================
+# BASE TOOLS
+# =========================
+
+- name: Install base tools
+  ansible.builtin.package:
+    name:
+      - jq
+      - pipx
+      - ntpdate
+      - flameshot
+      - exiftool
+      - rsyslog
+      - ca-certificates
+      - curl
+      - gh
+    state: latest
+
+# =========================
+# DOCKER (DISTRO-AWARE)
+# =========================
+
+- name: Debug distro info
+  ansible.builtin.debug:
+    msg:
+      - "Distribution: {{ ansible_distribution }}"
+      - "Release: {{ ansible_distribution_release }}"
+
+# -------------------------
+# PARROT OS → docker.io
+# -------------------------
+
+- name: Install Docker (Parrot-supported)
+  ansible.builtin.package:
+    name:
+      - docker.io
+      - docker-compose
+    state: latest
+  when: ansible_distribution == "Parrot"
+
+# -------------------------
+# DEBIAN / UBUNTU → docker-ce
+# -------------------------
+
+- name: Set Docker distro codename (non-Parrot)
+  ansible.builtin.set_fact:
+    docker_codename: "{{ ansible_distribution_release }}"
+  when: ansible_distribution != "Parrot"
+
+- name: Ensure /etc/apt/keyrings exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  when: ansible_distribution != "Parrot"
+
+- name: Download Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.gpg
+    mode: "0644"
+  when: ansible_distribution != "Parrot"
+
+- name: Add Docker APT repository
+  ansible.builtin.apt_repository:
+    repo: >
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/debian
+      {{ docker_codename }} stable
+    state: present
+    filename: docker
+  when: ansible_distribution != "Parrot"
+
+- name: Update apt cache after adding Docker repo
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_distribution != "Parrot"
+
+- name: Install Docker CE
+  ansible.builtin.package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: latest
+  when: ansible_distribution != "Parrot"
+
+# =========================
+# POST-INSTALL
+# =========================
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    groups: docker
+    append: yes
+
