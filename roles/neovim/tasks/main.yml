@@ -1,0 +1,103 @@
+---
+# =========================
+# 1) Build deps
+# =========================
+- name: Install Neovim build dependencies
+  become: true
+  apt:
+    name:
+      - ninja-build
+      - gettext
+      - cmake
+      - unzip
+      - curl
+      - git
+      - build-essential
+      - libtool
+      - libtool-bin
+      - pkg-config
+      - autoconf
+      - automake
+    state: present
+    update_cache: true
+
+# =========================
+# 2) Remove APT neovim (avoid v0.10)
+# =========================
+- name: Ensure distro Neovim is not installed (avoid old version)
+  become: true
+  apt:
+    name: neovim
+    state: absent
+
+# =========================
+# 3) Clone + build + install Neovim
+# =========================
+- name: Create Neovim build directory
+  become: true
+  file:
+    path: "{{ neovim_build_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone Neovim source
+  become: true
+  git:
+    repo: https://github.com/neovim/neovim.git
+    dest: "{{ neovim_build_dir }}"
+    version: "{{ neovim_version }}"
+    force: true
+
+- name: Build Neovim (Release)
+  become: true
+  command: make CMAKE_BUILD_TYPE=Release
+  args:
+    chdir: "{{ neovim_build_dir }}"
+
+- name: Install Neovim
+  become: true
+  command: make install
+  args:
+    chdir: "{{ neovim_build_dir }}"
+
+# =========================
+# 4) Verify version >= 0.11
+# =========================
+- name: Check Neovim version
+  command: nvim --version
+  register: nvim_version_out
+  changed_when: false
+
+- name: Fail if Neovim is older than 0.11
+  fail:
+    msg: |
+      Neovim is too old. Expected >= 0.11. Found:
+      {{ nvim_version_out.stdout_lines[0] }}
+  when: nvim_version_out.stdout is search("NVIM v0\\.10\\.")
+
+# =========================
+# 5) Copy config
+# =========================
+- name: Remove existing Neovim config (clean)
+  file:
+    path: "/home/{{ ansible_env.SUDO_USER }}/.config/nvim"
+    state: absent
+
+- name: Copy Neovim config to ~/.config/nvim
+  copy:
+    src: nvim
+    dest: "/home/{{ ansible_env.SUDO_USER }}/.config"
+    owner: "{{ ansible_env.SUDO_USER }}"
+    group: "{{ ansible_env.SUDO_USER }}"
+    mode: "0755"
+
+# =========================
+# 6) Sync plugins (Lazy.nvim)
+# =========================
+- name: Install Neovim plugins (Lazy.nvim)
+  command:
+    cmd: nvim --headless "+Lazy! sync" +qa
+  args:
+    creates: "/home/{{ ansible_env.SUDO_USER }}/.local/share/nvim/lazy"
+  changed_when: false
+

@@ -1,0 +1,4 @@
+neovim_version: "v0.11.0"
+neovim_build_dir: "/tmp/neovim-src"
+neovim_prefix: "/usr/local"
+
